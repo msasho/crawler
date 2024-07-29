@@ -35,7 +35,7 @@ def get_content(url):
     text = '\n'.join(chunk for chunk in chunks if chunk)
     return text
 
-def crawl(base_url, output_file, visited=None):
+def crawl(base_url, visited=None):
     if visited is None:
         visited = set()
 
@@ -50,23 +50,33 @@ def crawl(base_url, output_file, visited=None):
 
     try:
         content = get_content(base_url)
-        with open(output_file, 'a', encoding='utf-8') as f:
-            f.write(f"\n\nURL: {base_url}\n")
-            f.write(content)
+        # Create a directory for the first-level path
+        first_level_path = urlparse(base_url).netloc
+        # Get the path segments
+        path_segments = urlparse(base_url).path.strip('/').split('/')
+
+        # Create a unique directory for each path segment
+        for i in range(len(path_segments) + 1):
+            full_path = os.path.join(first_level_path, *path_segments[:i])
+            if not os.path.exists(full_path):
+                os.makedirs(full_path)
+
+            # Create an output file for the current URL
+            output_file = os.path.join(full_path, f"{urlparse(base_url).path.replace('/', '_') or 'index'}.txt")
+
+            with open(output_file, 'a', encoding='utf-8') as f:
+                f.write(f"\n\nURL: {base_url}\n")
+                f.write(content)
 
         links = get_all_links(base_url)
         for link in links:
             if link.startswith(base_url):
-                crawl(link, output_file, visited)
+                crawl(link, visited)
     except Exception as e:
         print(f"Error crawling {base_url}: {e}")
 
 if __name__ == "__main__":
     base_url = input("Enter the base URL to crawl: ")
-    output_file = input("Enter the output file name: ")
 
-    if os.path.exists(output_file):
-        os.remove(output_file)
-
-    crawl(base_url, output_file)
-    print(f"Crawling complete. Content saved to {output_file}")
+    crawl(base_url)
+    print("Crawling complete.")
